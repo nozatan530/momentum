@@ -100,10 +100,6 @@
 
   /* ── Header ── */
   header { text-align: center; margin-bottom: 16px; }
-  .eyebrow {
-    font-size: 11px; letter-spacing: .18em; text-transform: uppercase;
-    color: var(--muted); margin-bottom: 6px;
-  }
   h1 { font-size: clamp(1.3rem, 3.5vw, 1.9rem); font-weight: 700; }
   h1 .formula { font-family: 'JetBrains Mono', monospace; color: var(--dp); }
   .sub { margin-top: 6px; font-size: 13px; color: var(--muted); }
@@ -331,7 +327,6 @@
 </div>
 
 <header>
-  <p class="eyebrow" id="hdr-eyebrow">高校物理</p>
   <h1><span class="formula">Ft = mv₂ − mv₁</span></h1>
   <p class="sub" id="hdr-sub">運動量と力積はベクトル　— 向き（符号）を持つ</p>
 </header>
@@ -561,7 +556,6 @@
 // ────────── i18n ──────────
 const i18n = {
   ja: {
-    eyebrow: '高校物理',
     hdrSub: '運動量と力積はベクトル　— 向き（符号）を持つ',
     coordBar: '座標系：右向き <strong>→</strong> を正、左向き <strong>←</strong> を負とする（1次元）',
     btnLang: '🌐 English',
@@ -621,7 +615,6 @@ const i18n = {
     still: '静止 (v = 0)',
   },
   en: {
-    eyebrow: 'High School Physics',
     hdrSub: 'Impulse & Momentum are vectors — direction (sign) matters',
     coordBar: 'Coordinate: rightward <strong>→</strong> = positive, leftward <strong>←</strong> = negative (1D)',
     btnLang: '🌐 日本語',
@@ -706,7 +699,6 @@ function toggleTheme() {
 function applyLang() {
   const L = t();
   document.documentElement.lang = lang;
-  document.getElementById('hdr-eyebrow').textContent = L.eyebrow;
   document.getElementById('hdr-sub').textContent = L.hdrSub;
   document.getElementById('coord-bar').innerHTML = L.coordBar;
   document.getElementById('btn-lang').textContent = L.btnLang;
