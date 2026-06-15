@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>運動量と力積 — Ft = mv₂ − mv₁</title>
+<meta property="og:title" content="運動量と力積シミュレーター">
+<meta property="og:description" content="Ft = mv₂ − mv₁ を体感するインタラクティブ物理シミュレーター">
+<meta property="og:image" content="https://momentum.meetupsensei.com/ogp.jpg">
+<meta property="og:url" content="https://momentum.meetupsensei.com/">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  /* ────────── CUD-compliant palette ────────── */
+  /* Dark mode */
+  :root[data-theme="dark"] {
+    --bg:       #0f1117;
+    --surface:  #1a1d27;
+    --surface2: #13151f;
+    --border:   #2a2d3a;
+    --text:     #e8eaf0;
+    --muted:    #8a909e;
+    --grid:     #1e2130;
+    /* CUD safe accent colors */
+    --v1:       #4d94ff;   /* blue */
+    --v2:       #e05a5a;   /* red */
+    --dp:       #00b573;   /* green (CUD-safe) */
+    --mass:     #c47fde;   /* purple */
+    --Fc:       #e07b2a;   /* orange */
+    --Tc:       #d4b800;   /* yellow */
+    --wall1:    #3a3f55;
+    --wall2:    #1a1d27;
+    --toggle-bg: #2a2d3a;
+    --toggle-knob: #e8eaf0;
+    --shadow: 0 2px 12px rgba(0,0,0,0.4);
+  }
+
+  /* Light mode — CUD safe */
+  :root[data-theme="light"] {
+    --bg:       #f5f6fa;
+    --surface:  #ffffff;
+    --surface2: #eef0f6;
+    --border:   #d0d4e0;
+    --text:     #1a1c2a;
+    --muted:    #636880;
+    --grid:     #e8eaef;
+    --v1:       #0055cc;   /* blue — WCAG AA on white */
+    --v2:       #c0392b;   /* red — WCAG AA */
+    --dp:       #007a4e;   /* green — WCAG AA */
+    --mass:     #8238b0;   /* purple — WCAG AA */
+    --Fc:       #c05c00;   /* orange — WCAG AA */
+    --Tc:       #7a6400;   /* amber — WCAG AA */
+    --wall1:    #b0b8cc;
+    --wall2:    #d8dce8;
+    --toggle-bg: #d0d4e0;
+    --toggle-knob: #ffffff;
+    --shadow: 0 2px 12px rgba(0,0,0,0.10);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    min-height: 100vh;
+    padding: 20px 16px 0;
+    transition: background .25s, color .25s;
+  }
+
+  /* ── Control bar ── */
+  .ctrl-bar {
+    max-width: 960px;
+    margin: 0 auto 16px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .ctrl-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .ctrl-btn:hover { border-color: var(--dp); }
+  .ctrl-btn.active { border-color: var(--dp); color: var(--dp); background: color-mix(in srgb, var(--dp) 10%, transparent); }
+
+  /* ── Header ── */
+  header { text-align: center; margin-bottom: 16px; }
+  .eyebrow {
+    font-size: 11px; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 6px;
+  }
+  h1 { font-size: clamp(1.3rem, 3.5vw, 1.9rem); font-weight: 700; }
+  h1 .formula { font-family: 'JetBrains Mono', monospace; color: var(--dp); }
+  .sub { margin-top: 6px; font-size: 13px; color: var(--muted); }
+
+  .coord-bar {
+    max-width: 960px; margin: 0 auto 18px;
+    background: color-mix(in srgb, var(--v1) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--v1) 30%, transparent);
+    border-radius: 8px; padding: 8px 14px;
+    font-size: 12px; color: var(--v1); text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    transition: background .25s, border-color .25s, color .25s;
+  }
+
+  /* ── Presets ── */
+  .preset-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 22px; }
+  .preset-btn {
+    background: transparent; border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); font-size: 12px;
+    font-family: inherit; padding: 6px 14px; cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .preset-btn:hover { border-color: var(--v1); background: color-mix(in srgb, var(--v1) 8%, transparent); }
+  .preset-btn.active { border-color: var(--dp); color: var(--dp); }
+
+  /* ── Layout ── */
+  .wrap { max-width: 960px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px 24px;
+    box-shadow: var(--shadow);
+    transition: background .25s, border-color .25s;
+  }
+  .card-label {
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 16px;
+  }
+
+  /* ── Mass row ── */
+  .mass-row { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
+  .mass-row label { font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .mass-row input { flex: 1; --thumb-col: var(--mass); }
+  .mass-val {
+    font-family: 'JetBrains Mono', monospace; font-size: 15px;
+    font-weight: 600; color: var(--mass); white-space: nowrap;
+    min-width: 56px; text-align: right;
+  }
+
+  /* ── Mode tabs ── */
+  .mode-desc { font-size: 12px; color: var(--muted); margin-bottom: 10px; line-height: 1.5; }
+  .mode-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
+  .mode-tab {
+    background: transparent; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--muted); font-family: inherit; font-size: 12px;
+    padding: 10px 8px; cursor: pointer; text-align: center; line-height: 1.4;
+    transition: all .15s;
+  }
+  .mode-tab:hover { border-color: var(--dp); color: var(--text); }
+  .mode-tab.active {
+    border-color: var(--dp);
+    background: color-mix(in srgb, var(--dp) 12%, transparent);
+    color: var(--dp); font-weight: 700;
+  }
+  .auto-badge {
+    display: inline-block; font-size: 10px; background: var(--dp);
+    color: #fff; border-radius: 3px; padding: 1px 5px;
+    margin-left: 4px; font-weight: 700;
+  }
+
+  /* ── Param blocks ── */
+  .sliders-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .sliders-grid { grid-template-columns: 1fr; } }
+
+  .param-block {
+    border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px;
+    transition: border-color .2s, background .2s;
+  }
+  .param-block.v1-block { border-color: color-mix(in srgb, var(--v1) 50%, transparent); }
+  .param-block.v2-block { border-color: color-mix(in srgb, var(--v2) 50%, transparent); }
+  .param-block.dp-block  { border-color: color-mix(in srgb, var(--dp)  50%, transparent); }
+  .param-block.is-auto   { border-color: transparent !important; background: color-mix(in srgb, var(--text) 4%, transparent); }
+
+  .param-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .param-name { font-size: 13px; font-weight: 500; }
+  .param-badge { font-size: 10px; border-radius: 4px; padding: 2px 7px; font-weight: 700; letter-spacing: .05em; }
+  .badge-input { background: color-mix(in srgb, var(--text) 12%, transparent); color: var(--text); }
+  .badge-auto  { background: var(--dp); color: #fff; }
+
+  .param-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(20px, 3.5vw, 26px);
+    font-weight: 600; margin-bottom: 8px; line-height: 1;
+    display: flex; align-items: baseline; gap: 6px;
+  }
+  .param-unit { font-size: 11px; color: var(--muted); font-weight: 400; }
+  .param-dir  { font-size: 14px; font-weight: 700; }
+
+  .signed-slider-wrap { position: relative; }
+  .signed-slider-wrap::before {
+    content: ''; position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%); width: 2px; height: 10px;
+    background: var(--muted); border-radius: 1px; pointer-events: none; opacity: 0.5;
+  }
+  .signed-axis-labels {
+    display: flex; justify-content: space-between;
+    font-size: 9px; color: var(--muted);
+    font-family: 'JetBrains Mono', monospace; margin-top: 2px;
+  }
+
+  /* ── Range input ── */
+  input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 4px; border-radius: 2px;
+    background: var(--border); outline: none; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--thumb-col, #888); border: 2px solid var(--bg);
+    transition: transform .1s;
+  }
+  input[type=range]:hover::-webkit-slider-thumb { transform: scale(1.2); }
+  input[type=range]:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* ── Snapshot ── */
+  .snap-row { display: grid; grid-template-columns: 1fr 84px 1fr; gap: 0; align-items: center; }
+  .snap-panel { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .snap-title { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  canvas.snap { display: block; border-radius: 8px; background: var(--surface2); width: 100%; }
+  .snap-mv { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; text-align: center; }
+  .snap-mv .unit { font-size: 10px; color: var(--muted); font-weight: 400; display: block; margin-top: 2px; }
+
+  .snap-mid { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+  .delta-pill {
+    background: color-mix(in srgb, var(--dp) 12%, transparent);
+    border: 1px solid var(--dp);
+    border-radius: 8px; padding: 8px 10px; text-align: center;
+  }
+  .delta-pill .dp-label { font-size: 10px; color: var(--muted); }
+  .delta-pill .dp-val { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; color: var(--dp); }
+  .arrow-icon { font-size: 18px; color: var(--muted); }
+
+  /* ── Equation strip ── */
+  .eq-strip {
+    display: flex; align-items: center; justify-content: center;
+    flex-wrap: wrap; gap: 8px 14px;
+    background: var(--surface2); border-radius: 10px; padding: 14px 20px; margin-bottom: 14px;
+  }
+  .eq-term { text-align: center; }
+  .eq-sym { font-family: 'JetBrains Mono', monospace; font-size: clamp(18px,3vw,26px); font-weight: 600; display: block; }
+  .eq-num { font-family: 'JetBrains Mono', monospace; font-size: 12px; display: block; margin-top: 2px; }
+  .eq-op  { font-size: 22px; color: var(--muted); }
+
+  /* ── Balance bars ── */
+  .bal-block { margin: 4px 0; }
+  .bal-block .bl-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .bal-block .bl-label { font-size: 11px; min-width: 100px; }
+  .bl-bar-wrap {
+    flex: 1; position: relative; height: 10px;
+    background: var(--border); border-radius: 5px; overflow: hidden;
+  }
+  .bl-bar-wrap::before {
+    content: ''; position: absolute; left: 50%; top: 0; bottom: 0;
+    width: 1px; background: var(--muted); opacity: 0.6; z-index: 2;
+  }
+  .bl-bar { position: absolute; top: 0; bottom: 0; transition: all .2s; }
+  .bl-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; min-width: 100px; text-align: right; }
+
+  .bal-check { text-align:center; margin-top:8px; font-size:13px; font-weight:500; min-height:20px; }
+
+  /* ── Ft section ── */
+  .ft-section { border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px; }
+  .ft-hint { font-size: 12px; color: var(--muted); margin-bottom: 12px; line-height: 1.5; }
+  .ft-sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 480px) { .ft-sliders { grid-template-columns: 1fr; } }
+  .ft-row { display: flex; flex-direction: column; gap: 4px; }
+  .ft-header { display: flex; justify-content: space-between; }
+  .ft-header label { font-size: 13px; color: var(--muted); }
+  .ft-header .fval { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; }
+
+  #ftgraph { display:block; border-radius:8px; background:var(--surface2); width:100%; }
+
+  .link-toggle {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--muted); cursor: pointer; user-select: none;
+    padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px;
+    transition: all .15s;
+  }
+
+  .insight {
+    background: color-mix(in srgb, var(--dp) 8%, transparent);
+    border-left: 3px solid var(--dp);
+    border-radius: 0 8px 8px 0; padding: 10px 14px;
+    font-size: 13px; line-height: 1.6;
+    color: var(--text);
+    margin-top: 14px; min-height: 42px;
+  }
+
+  /* ── Footer ── */
+  footer {
+    max-width: 960px; margin: 32px auto 0;
+    padding: 20px 0 24px;
+    border-top: 1px solid var(--border);
+    display: flex; flex-wrap: wrap; gap: 8px;
+    justify-content: space-between; align-items: center;
+    font-size: 12px; color: var(--muted);
+  }
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { color: var(--dp); }
+  .footer-center { text-align: center; flex: 1 1 200px; }
+  .footer-formula {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--dp); margin-top: 4px;
+  }
+</style>
+</head>
+<body data-theme="dark">
+
+<!-- Control Bar -->
+<div class="ctrl-bar">
+  <button class="ctrl-btn" id="btn-lang" onclick="toggleLang()">🌐 English</button>
+  <button class="ctrl-btn" id="btn-theme" onclick="toggleTheme()">☀️ <span id="theme-label">ライトモード</span></button>
+</div>
+
+<header>
+  <p class="eyebrow" id="hdr-eyebrow">高校物理</p>
+  <h1><span class="formula">Ft = mv₂ − mv₁</span></h1>
+  <p class="sub" id="hdr-sub">運動量と力積はベクトル　— 向き（符号）を持つ</p>
+</header>
+
+<div class="coord-bar" id="coord-bar">
+  座標系：右向き <strong>→</strong> を正、左向き <strong>←</strong> を負とする（1次元）
+</div>
+
+<!-- Presets -->
+<div class="preset-row" id="presets">
+  <button class="preset-btn active" data-preset="default" id="p-default">デフォルト</button>
+  <button class="preset-btn" data-preset="bounce"   id="p-bounce">⚽ 跳ね返り</button>
+  <button class="preset-btn" data-preset="baseball" id="p-baseball">⚾ 野球（バット）</button>
+  <button class="preset-btn" data-preset="airbag"   id="p-airbag">🚗 エアバッグ</button>
+  <button class="preset-btn" data-preset="catch"    id="p-catch">🥎 キャッチ</button>
+</div>
+
+<div class="wrap">
+
+  <!-- CARD 1: 入力 -->
+  <div class="card">
+    <p class="card-label" id="lbl-params">パラメータ入力</p>
+
+    <div class="mass-row">
+      <label id="lbl-mass">質量 <em>m</em></label>
+      <input type="range" id="sl-m" min="0.1" max="5" step="0.1" value="1.0">
+      <span class="mass-val"><span id="val-m">1.0</span> kg</span>
+    </div>
+
+    <p class="mode-desc" id="lbl-mode-desc">どの値を「自動計算」にしますか？</p>
+    <div class="mode-tabs">
+      <button class="mode-tab active" data-mode="auto-dp" id="mtab-dp">
+        <span class="mtab-l1">v₁ と v₂ を入力</span><br><span class="auto-badge">AUTO</span> Δp
+      </button>
+      <button class="mode-tab" data-mode="auto-v2" id="mtab-v2">
+        <span class="mtab-l1">v₁ と Δp を入力</span><br><span class="auto-badge">AUTO</span> v₂
+      </button>
+      <button class="mode-tab" data-mode="auto-v1" id="mtab-v1">
+        <span class="mtab-l1">v₂ と Δp を入力</span><br><span class="auto-badge">AUTO</span> v₁
+      </button>
+    </div>
+
+    <div class="sliders-grid">
+      <!-- v1 -->
+      <div class="param-block v1-block" id="block-v1">
+        <div class="param-header">
+          <span class="param-name" style="color:var(--v1)" id="pname-v1">衝突前の速度 v₁</span>
+          <span class="param-badge" id="badge-v1">入力</span>
+        </div>
+        <div class="param-val">
+          <span id="disp-v1-num">+5.0</span>
+          <span class="param-unit">m/s</span>
+          <span class="param-dir" id="disp-v1-dir" style="color:var(--v1)">→</span>
+        </div>
+        <div class="signed-slider-wrap">
+          <input type="range" id="sl-v1" min="-20" max="20" step="0.5" value="5" style="--thumb-col:var(--v1)">
+        </div>
+        <div class="signed-axis-labels"><span>← −20</span><span>0</span><span>+20 →</span></div>
+      </div>
+
+      <!-- v2 -->
+      <div class="param-block v2-block" id="block-v2">
+        <div class="param-header">
+          <span class="param-name" style="color:var(--v2)" id="pname-v2">衝突後の速度 v₂</span>
+          <span class="param-badge" id="badge-v2">入力</span>
+        </div>
+        <div class="param-val">
+          <span id="disp-v2-num">−3.0</span>
+          <span class="param-unit">m/s</span>
+          <span class="param-dir" id="disp-v2-dir" style="color:var(--v2)">←</span>
+        </div>
+        <div class="signed-slider-wrap">
+          <input type="range" id="sl-v2" min="-20" max="20" step="0.5" value="-3" style="--thumb-col:var(--v2)">
+        </div>
+        <div class="signed-axis-labels"><span>← −20</span><span>0</span><span>+20 →</span></div>
+      </div>
+
+      <!-- Δp -->
+      <div class="param-block dp-block" id="block-dp">
+        <div class="param-header">
+          <span class="param-name" style="color:var(--dp)" id="pname-dp">運動量変化 Δp</span>
+          <span class="param-badge" id="badge-dp">自動計算</span>
+        </div>
+        <div class="param-val">
+          <span id="disp-dp-num">−8.0</span>
+          <span class="param-unit">kg·m/s</span>
+          <span class="param-dir" id="disp-dp-dir" style="color:var(--dp)">←</span>
+        </div>
+        <div class="signed-slider-wrap">
+          <input type="range" id="sl-dp" min="-40" max="40" step="0.5" value="-8" style="--thumb-col:var(--dp)" disabled>
+        </div>
+        <div class="signed-axis-labels"><span>← −40</span><span>0</span><span>+40 →</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CARD 2: 3コマ図 -->
+  <div class="card">
+    <p class="card-label" id="lbl-snapshot">速度ベクトルの3コマ図　— 矢印の向きと長さが速度を表す</p>
+    <div class="snap-row">
+      <div class="snap-panel">
+        <div class="snap-title" style="color:var(--v1)" id="snap-t1">① 衝突前</div>
+        <canvas class="snap" id="cv-before" height="100"></canvas>
+        <div class="snap-mv" style="color:var(--v1)">
+          <span id="snap-mv1">—</span>
+          <span class="unit" id="snap-unit1">mv₁ (kg·m/s)</span>
+        </div>
+      </div>
+      <div class="snap-mid">
+        <div class="delta-pill">
+          <div class="dp-label" id="dp-eq-label">Δp = mv₂ − mv₁</div>
+          <div class="dp-val" id="snap-dp">—</div>
+          <div class="dp-label">= Ft</div>
+        </div>
+        <div class="arrow-icon">↑</div>
+        <div style="font-size:10px;color:var(--muted);text-align:center" id="snap-note">力積が運動量を<br>変化させる</div>
+      </div>
+      <div class="snap-panel">
+        <div class="snap-title" style="color:var(--v2)" id="snap-t2">③ 衝突後</div>
+        <canvas class="snap" id="cv-after" height="100"></canvas>
+        <div class="snap-mv" style="color:var(--v2)">
+          <span id="snap-mv2">—</span>
+          <span class="unit" id="snap-unit2">mv₂ (kg·m/s)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CARD 3: 式 + Ft -->
+  <div class="card">
+    <p class="card-label" id="lbl-eq">式の確認（ベクトル）</p>
+
+    <div class="eq-strip">
+      <div class="eq-term">
+        <span class="eq-sym" style="color:var(--Fc)">F t</span>
+        <span class="eq-num" id="eq-Ft" style="color:var(--Fc)">—</span>
+      </div>
+      <span class="eq-op">=</span>
+      <div class="eq-term">
+        <span class="eq-sym" style="color:var(--v2)">mv₂</span>
+        <span class="eq-num" id="eq-mv2" style="color:var(--v2)">—</span>
+      </div>
+      <span class="eq-op">−</span>
+      <div class="eq-term">
+        <span class="eq-sym" style="color:var(--v1)">mv₁</span>
+        <span class="eq-num" id="eq-mv1" style="color:var(--v1)">—</span>
+      </div>
+      <span class="eq-op">=</span>
+      <div class="eq-term">
+        <span class="eq-sym" style="color:var(--dp)">Δp</span>
+        <span class="eq-num" id="eq-dp" style="color:var(--dp)">—</span>
+      </div>
+    </div>
+
+    <div class="bal-block">
+      <div class="bl-row">
+        <span class="bl-label" style="color:var(--Fc)" id="bar-lbl-Ft">力積 Ft</span>
+        <div class="bl-bar-wrap"><div class="bl-bar" id="bar-Ft" style="background:var(--Fc)"></div></div>
+        <span class="bl-val" id="bar-Ft-val" style="color:var(--Fc)">—</span>
+      </div>
+      <div class="bl-row">
+        <span class="bl-label" style="color:var(--dp)" id="bar-lbl-dp">運動量変化 Δp</span>
+        <div class="bl-bar-wrap"><div class="bl-bar" id="bar-dp" style="background:var(--dp)"></div></div>
+        <span class="bl-val" id="bar-dp-val" style="color:var(--dp)">—</span>
+      </div>
+    </div>
+
+    <div class="bal-check" id="bal-check"></div>
+
+    <div class="ft-section">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+        <p class="ft-hint" style="margin:0;flex:1;min-width:200px" id="ft-hint">💡 Ft = mv₂ − mv₁　F と t は反比例の関係</p>
+        <label class="link-toggle" id="link-toggle-lbl">
+          <input type="checkbox" id="link-ft" checked style="cursor:pointer;accent-color:var(--Fc)">
+          <span id="link-ft-label">F と t を連動（Ft = Δp を維持）</span>
+        </label>
+      </div>
+      <div class="ft-sliders">
+        <div class="ft-row">
+          <div class="ft-header">
+            <label id="lbl-F">力 <em>F</em> (N)</label>
+            <span class="fval" id="val-F" style="color:var(--Fc)">—</span>
+          </div>
+          <div class="signed-slider-wrap">
+            <input type="range" id="sl-F" min="-500" max="500" step="1" value="-80" style="--thumb-col:var(--Fc)">
+          </div>
+          <div class="signed-axis-labels"><span>← −500</span><span>0</span><span>+500 →</span></div>
+        </div>
+        <div class="ft-row">
+          <div class="ft-header">
+            <label id="lbl-t">時間 <em>t</em> (s)　<span style="font-size:10px" id="lbl-t-note">※正の値</span></label>
+            <span class="fval" id="val-t" style="color:var(--Tc)">—</span>
+          </div>
+          <input type="range" id="sl-t" min="0.01" max="5" step="0.01" value="0.1" style="--thumb-col:var(--Tc)">
+        </div>
+      </div>
+    </div>
+
+    <div class="insight" id="insight">スライダーを動かすと気づきが表示されます。</div>
+  </div>
+
+  <!-- CARD 4: F-t graph -->
+  <div class="card">
+    <p class="card-label" id="lbl-ftgraph">F-t グラフ — 符号付き面積 = 力積 Ft</p>
+    <canvas id="ftgraph" height="200"></canvas>
+  </div>
+
+</div>
+
+<!-- Footer -->
+<footer>
+  <div>
+    <div id="footer-credit">制作：のざたん（野崎浩平）</div>
+    <div><a href="https://meetupsensei.com" target="_blank">meetupsensei.com</a></div>
+  </div>
+  <div class="footer-center">
+    <div id="footer-title">運動量と力積シミュレーター</div>
+    <div class="footer-formula">Ft = mv₂ − mv₁</div>
+  </div>
+  <div style="text-align:right">
+    <div id="footer-note">高校物理 インタラクティブシミュレーター</div>
+    <div style="margin-top:4px"><a href="https://meetupsensei.com" target="_blank">会いに行けるセンセイ</a></div>
+  </div>
+</footer>
+
+<script>
+// ────────── i18n ──────────
+const i18n = {
+  ja: {
+    eyebrow: '高校物理',
+    hdrSub: '運動量と力積はベクトル　— 向き（符号）を持つ',
+    coordBar: '座標系：右向き <strong>→</strong> を正、左向き <strong>←</strong> を負とする（1次元）',
+    btnLang: '🌐 English',
+    btnThemeLight: '☀️ ライトモード',
+    btnThemeDark:  '🌙 ダークモード',
+    lblParams: 'パラメータ入力',
+    lblMass: '質量 <em>m</em>',
+    lblModeDesc: 'どの値を「自動計算」にしますか？',
+    mtabDp: 'v₁ と v₂ を入力',
+    mtabV2: 'v₁ と Δp を入力',
+    mtabV1: 'v₂ と Δp を入力',
+    pnameV1: '衝突前の速度 v₁',
+    pnameV2: '衝突後の速度 v₂',
+    pnameDp: '運動量変化 Δp',
+    badgeInput: '入力',
+    badgeAuto: '自動計算',
+    lblSnapshot: '速度ベクトルの3コマ図　— 矢印の向きと長さが速度を表す',
+    snapT1: '① 衝突前',
+    snapT2: '③ 衝突後',
+    snapUnit1: 'mv₁ (kg·m/s)',
+    snapUnit2: 'mv₂ (kg·m/s)',
+    snapNote: '力積が運動量を<br>変化させる',
+    dpEqLabel: 'Δp = mv₂ − mv₁',
+    lblEq: '式の確認（ベクトル）',
+    barLblFt: '力積 Ft',
+    barLblDp: '運動量変化 Δp',
+    ftHint: '💡 Ft = mv₂ − mv₁　F と t は反比例の関係',
+    linkFtLabel: 'F と t を連動（Ft = Δp を維持）',
+    lblF: '力 <em>F</em> (N)',
+    lblT: '時間 <em>t</em> (s)',
+    lblTNote: '※正の値',
+    insight0: 'スライダーを動かすと気づきが表示されます。',
+    lblFtGraph: 'F-t グラフ — 符号付き面積 = 力積 Ft',
+    footerCredit: '制作：のざたん（野崎浩平）',
+    footerTitle: '運動量と力積シミュレーター',
+    footerNote: '高校物理 インタラクティブシミュレーター',
+    footerSensei: '会いに行けるセンセイ',
+    balLinkMsg: (lt, fdp, ft, fF) => `🔗 連動中：Ft = Δp が自動で維持されます（${lt === 'F' ? 'F を動かすと t が変化' : 't を動かすと F が変化'}）`,
+    balOk: '✓ Ft = mv₂ − mv₁ = Δp　式が成り立っています！',
+    balSignWarn: (iFt, idp) => `⚠ Ft (${iFt}) と Δp (${idp}) で向きが逆！　F の符号を見直そう`,
+    balMismatch: (iFt, idp) => `Ft = ${iFt} ≠ Δp = ${idp}　（F または t を調整）`,
+    insF: (fF, fdp, ft) => `F を ${fF} N にすると、Ft = Δp = ${fdp} を満たす t は ${ft} s。F が大きいほど t は短くなる（反比例）。`,
+    insT: (ft, fdp, fF) => `t を ${ft} s にすると、Ft = Δp = ${fdp} を満たす F は ${fF} N。t が長いほど F は小さくなる（反比例）。`,
+    insStop: (n) => `v₂ = 0：完全停止。Δp = 0 − mv₁ = ${n}（v₁と逆向き）`,
+    insBounce: '跳ね返り：v₁ > 0、v₂ < 0。Δp = m(v₂ − v₁) は大きな負の値（壁が左向きに力積を与えた）。',
+    insSame: 'v₁ ≈ v₂：運動量はほとんど変化しない。Δp ≈ 0。',
+    insDefault: (iFt, idp) => `Ft = ${iFt} N·s　＝　Δp = ${idp} N·s`,
+    ftSameArea: 'F÷2, t×2（同じ面積）',
+    presets: {
+      default:  { label: 'デフォルト', hint: '右向きに進む物体が壁で跳ね返る。v₂は左向き（負）。Δp < 0。' },
+      bounce:   { label: '⚽ 跳ね返り', hint: '⚽ ボールが壁で跳ね返る。Δp = m(v₂−v₁) = 0.5×(−14) = −7 kg·m/s（左向き）。力積も負。' },
+      baseball: { label: '⚾ 野球（バット）', hint: '⚾ ピッチャーから来たボール（+40）を打ち返して逆向きへ（−50）。Δp = 0.15×(−90) = −13.5 kg·m/s。' },
+      airbag:   { label: '🚗 エアバッグ', hint: '🚗 衝突して停止（v₂=0）。t を長くしても力積 Ft は同じ。F を小さくできる→人体保護。' },
+      catch:    { label: '🥎 キャッチ', hint: '🥎 グローブでキャッチ：v₂=0。手を引きながら取ると t が長くなり F が小さい。' },
+    },
+    xAxis: '+x →',
+    still: '静止 (v = 0)',
+  },
+  en: {
+    eyebrow: 'High School Physics',
+    hdrSub: 'Impulse & Momentum are vectors — direction (sign) matters',
+    coordBar: 'Coordinate: rightward <strong>→</strong> = positive, leftward <strong>←</strong> = negative (1D)',
+    btnLang: '🌐 日本語',
+    btnThemeLight: '☀️ Light mode',
+    btnThemeDark:  '🌙 Dark mode',
+    lblParams: 'Parameter Input',
+    lblMass: 'Mass <em>m</em>',
+    lblModeDesc: 'Which value should be auto-calculated?',
+    mtabDp: 'Enter v₁ and v₂',
+    mtabV2: 'Enter v₁ and Δp',
+    mtabV1: 'Enter v₂ and Δp',
+    pnameV1: 'Initial velocity v₁',
+    pnameV2: 'Final velocity v₂',
+    pnameDp: 'Momentum change Δp',
+    badgeInput: 'Input',
+    badgeAuto: 'Auto',
+    lblSnapshot: 'Velocity vector snapshots — arrow direction and length represent velocity',
+    snapT1: '① Before',
+    snapT2: '③ After',
+    snapUnit1: 'mv₁ (kg·m/s)',
+    snapUnit2: 'mv₂ (kg·m/s)',
+    snapNote: 'Impulse changes<br>momentum',
+    dpEqLabel: 'Δp = mv₂ − mv₁',
+    lblEq: 'Equation check (vector)',
+    barLblFt: 'Impulse Ft',
+    barLblDp: 'Momentum change Δp',
+    ftHint: '💡 Ft = mv₂ − mv₁ — F and t are inversely proportional',
+    linkFtLabel: 'Link F & t (keep Ft = Δp)',
+    lblF: 'Force <em>F</em> (N)',
+    lblT: 'Time <em>t</em> (s)',
+    lblTNote: '(positive only)',
+    insight0: 'Move the sliders to see insights.',
+    lblFtGraph: 'F-t graph — signed area = impulse Ft',
+    footerCredit: 'Created by Nozatan (Kohei Nozaki)',
+    footerTitle: 'Impulse & Momentum Simulator',
+    footerNote: 'High School Physics Interactive Simulator',
+    footerSensei: 'meetupsensei.com',
+    balLinkMsg: (lt, fdp, ft, fF) => `🔗 Linked: Ft = Δp is maintained automatically (${lt === 'F' ? 'moving F changes t' : 'moving t changes F'})`,
+    balOk: '✓ Ft = mv₂ − mv₁ = Δp — the equation holds!',
+    balSignWarn: (iFt, idp) => `⚠ Ft (${iFt}) and Δp (${idp}) have opposite signs! Check the sign of F.`,
+    balMismatch: (iFt, idp) => `Ft = ${iFt} ≠ Δp = ${idp} (adjust F or t)`,
+    insF: (fF, fdp, ft) => `Setting F to ${fF} N, the required t to satisfy Ft = Δp = ${fdp} is ${ft} s. Larger |F| → shorter t (inverse proportion).`,
+    insT: (ft, fdp, fF) => `Setting t to ${ft} s, the required F to satisfy Ft = Δp = ${fdp} is ${fF} N. Longer t → smaller |F| (inverse proportion).`,
+    insStop: (n) => `v₂ = 0: object comes to rest. Δp = 0 − mv₁ = ${n} (opposite to v₁)`,
+    insBounce: 'Bounce: v₁ > 0, v₂ < 0. Δp = m(v₂ − v₁) is a large negative value (wall applies impulse leftward).',
+    insSame: 'v₁ ≈ v₂: almost no momentum change. Δp ≈ 0.',
+    insDefault: (iFt, idp) => `Ft = ${iFt} N·s  =  Δp = ${idp} N·s`,
+    ftSameArea: 'F/2, t×2 (same area)',
+    presets: {
+      default:  { label: 'Default', hint: 'Ball moving right bounces off a wall. v₂ is leftward (negative). Δp < 0.' },
+      bounce:   { label: '⚽ Bounce', hint: '⚽ Ball bounces off wall. Δp = m(v₂−v₁) = 0.5×(−14) = −7 kg·m/s (leftward).' },
+      baseball: { label: '⚾ Baseball (bat)', hint: '⚾ Ball coming at +40 m/s is hit back at −50 m/s. Δp = 0.15×(−90) = −13.5 kg·m/s.' },
+      airbag:   { label: '🚗 Airbag', hint: '🚗 Car hits obstacle and stops (v₂=0). Same impulse Ft regardless of t — longer t means smaller F → body protection.' },
+      catch:    { label: '🥎 Catching', hint: '🥎 Glove catches ball: v₂=0. Pulling hand back increases t, reducing F on the hand.' },
+    },
+    xAxis: '+x →',
+    still: 'at rest (v = 0)',
+  }
+};
+
+let lang = 'ja';
+let theme = 'dark';
+
+function t() { return i18n[lang]; }
+
+function toggleLang() {
+  lang = lang === 'ja' ? 'en' : 'ja';
+  applyLang();
+  update();
+}
+
+function toggleTheme() {
+  theme = theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', theme);
+  const label = document.getElementById('theme-label');
+  label.textContent = theme === 'dark'
+    ? (lang === 'ja' ? 'ライトモード' : 'Light mode')
+    : (lang === 'ja' ? 'ダークモード' : 'Dark mode');
+  update();
+}
+
+function applyLang() {
+  const L = t();
+  document.documentElement.lang = lang;
+  document.getElementById('hdr-eyebrow').textContent = L.eyebrow;
+  document.getElementById('hdr-sub').textContent = L.hdrSub;
+  document.getElementById('coord-bar').innerHTML = L.coordBar;
+  document.getElementById('btn-lang').textContent = L.btnLang;
+  const themeIsLight = theme === 'light';
+  document.getElementById('theme-label').textContent = themeIsLight
+    ? (lang === 'ja' ? 'ダークモード' : 'Dark mode')
+    : (lang === 'ja' ? 'ライトモード' : 'Light mode');
+
+  document.getElementById('lbl-params').textContent = L.lblParams;
+  document.getElementById('lbl-mass').innerHTML = L.lblMass;
+  document.getElementById('lbl-mode-desc').textContent = L.lblModeDesc;
+
+  document.querySelector('#mtab-dp .mtab-l1').textContent = L.mtabDp;
+  document.querySelector('#mtab-v2 .mtab-l1').textContent = L.mtabV2;
+  document.querySelector('#mtab-v1 .mtab-l1').textContent = L.mtabV1;
+
+  document.getElementById('pname-v1').textContent = L.pnameV1;
+  document.getElementById('pname-v2').textContent = L.pnameV2;
+  document.getElementById('pname-dp').textContent = L.pnameDp;
+
+  document.getElementById('lbl-snapshot').textContent = L.lblSnapshot;
+  document.getElementById('snap-t1').textContent = L.snapT1;
+  document.getElementById('snap-t2').textContent = L.snapT2;
+  document.getElementById('snap-unit1').textContent = L.snapUnit1;
+  document.getElementById('snap-unit2').textContent = L.snapUnit2;
+  document.getElementById('snap-note').innerHTML = L.snapNote;
+  document.getElementById('dp-eq-label').textContent = L.dpEqLabel;
+
+  document.getElementById('lbl-eq').textContent = L.lblEq;
+  document.getElementById('bar-lbl-Ft').textContent = L.barLblFt;
+  document.getElementById('bar-lbl-dp').textContent = L.barLblDp;
+  document.getElementById('ft-hint').textContent = L.ftHint;
+  document.getElementById('link-ft-label').textContent = L.linkFtLabel;
+  document.getElementById('lbl-F').innerHTML = L.lblF;
+  document.getElementById('lbl-t').innerHTML = L.lblT + ' <span style="font-size:10px" id="lbl-t-note">' + L.lblTNote + '</span>';
+  document.getElementById('lbl-ftgraph').textContent = L.lblFtGraph;
+
+  // presets
+  ['default','bounce','baseball','airbag','catch'].forEach(k => {
+    const el = document.getElementById('p-' + k);
+    if (el) el.textContent = L.presets[k].label;
+  });
+
+  // footer
+  document.getElementById('footer-credit').textContent = L.footerCredit;
+  document.getElementById('footer-title').textContent = L.footerTitle;
+  document.getElementById('footer-note').textContent = L.footerNote;
+}
+
+// ────────── Simulation state ──────────
+const S = {
+  m: 1.0, v1: 5.0, v2: -3.0, dp: -8.0,
+  F: -80, t: 0.1,
+  mode: 'auto-dp',
+  linkFt: true,
+  lastTouchedFt: 'F',
+};
+
+const presetData = {
+  default:  { m:1.0,  v1:5.0,  v2:-3.0,  F:-80,    t:0.10, mode:'auto-dp' },
+  bounce:   { m:0.5,  v1:8.0,  v2:-6.0,  F:-700,   t:0.01, mode:'auto-dp' },
+  baseball: { m:0.15, v1:40.0, v2:-50.0, F:-6750,  t:0.002,mode:'auto-dp' },
+  airbag:   { m:80,   v1:14.0, v2:0.0,   F:-1120,  t:1.0,  mode:'auto-dp' },
+  catch:    { m:0.15, v1:30.0, v2:0.0,   F:-22.5,  t:0.2,  mode:'auto-dp' },
+};
+
+function fmt(n, d=3) {
+  if (isNaN(n) || !isFinite(n)) return '—';
+  if (Math.abs(n) >= 10000 || (Math.abs(n) < 0.001 && n !== 0)) return n.toExponential(2);
+  return parseFloat(n.toPrecision(d)).toString();
+}
+function fmtSigned(n, d=3) {
+  if (isNaN(n) || !isFinite(n)) return '—';
+  if (n === 0) return '0';
+  return (n > 0 ? '+' : '−') + fmt(Math.abs(n), d);
+}
+function dirArrow(n) {
+  if (n > 0.001) return '→';
+  if (n < -0.001) return '←';
+  return '·';
+}
+
+function resolve() {
+  const { m, mode } = S;
+  if (mode === 'auto-dp')      S.dp = m * (S.v2 - S.v1);
+  else if (mode === 'auto-v2') S.v2 = S.v1 + S.dp / m;
+  else                         S.v1 = S.v2 - S.dp / m;
+}
+
+function applyFtLink() {
+  if (!S.linkFt) return;
+  const dp = S.dp;
+  if (Math.abs(dp) < 1e-9) { S.F = 0; return; }
+  if (S.lastTouchedFt === 'F') {
+    if (Math.abs(S.F) < 1e-6) S.F = Math.sign(dp) * 1;
+    if (Math.sign(S.F) !== Math.sign(dp)) S.F = -S.F;
+    S.t = dp / S.F;
+  } else {
+    if (S.t < 1e-4) S.t = 1e-4;
+    S.F = dp / S.t;
+  }
+}
+
+// ── Canvas helpers ──
+function getCSSVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function drawSnap(id, signedVel, cssVar, refMaxV, mass) {
+  const cv = document.getElementById(id);
+  const W = cv.parentElement.clientWidth;
+  cv.width = W; cv.height = 100;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, W, 100);
+
+  const hexColor = getCSSVar(cssVar);
+  const surfColor = getCSSVar('--surface2');
+  const borderColor = getCSSVar('--border');
+  const mutedColor = getCSSVar('--muted');
+  const textColor = getCSSVar('--text');
+  const wall1 = getCSSVar('--wall1');
+  const wall2 = getCSSVar('--wall2');
+
+  ctx.fillStyle = surfColor;
+  ctx.fillRect(0, 0, W, 100);
+
+  const CY = 50;
+  const R = Math.max(12, Math.min(26, 10 + mass * 3.5));
+  const wallX = W - 14;
+
+  // wall
+  const wg = ctx.createLinearGradient(wallX, 0, wallX + 12, 0);
+  wg.addColorStop(0, wall1); wg.addColorStop(1, wall2);
+  ctx.fillStyle = wg;
+  ctx.fillRect(wallX, CY - 36, 12, 72);
+
+  const ballX = W * 0.42;
+
+  // ball
+  ctx.beginPath();
+  ctx.arc(ballX, CY, R, 0, Math.PI*2);
+  ctx.fillStyle = hexColor;
+  ctx.globalAlpha = 0.85;
+  ctx.fill();
+  ctx.globalAlpha = 1.0;
+  ctx.strokeStyle = hexColor;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // arrow
+  const MAX_LEN = W * 0.40;
+  const arrowLen = (Math.abs(signedVel) / refMaxV) * MAX_LEN;
+
+  if (Math.abs(signedVel) > 0.01) {
+    const dir = signedVel > 0 ? 1 : -1;
+    const ax1 = ballX + dir * (R + 4);
+    const ax2c = Math.max(4, Math.min(wallX - 4, ax1 + dir * arrowLen));
+
+    ctx.strokeStyle = hexColor; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(ax1, CY); ctx.lineTo(ax2c, CY); ctx.stroke();
+
+    ctx.fillStyle = hexColor;
+    ctx.beginPath();
+    ctx.moveTo(ax2c, CY);
+    ctx.lineTo(ax2c - dir*11, CY - 5);
+    ctx.lineTo(ax2c - dir*11, CY + 5);
+    ctx.closePath(); ctx.fill();
+
+    ctx.fillStyle = hexColor;
+    ctx.font = 'bold 11px JetBrains Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(fmtSigned(signedVel) + ' m/s', (ax1 + ax2c) / 2, CY - R - 8);
+    ctx.textAlign = 'left';
+  } else {
+    ctx.fillStyle = mutedColor;
+    ctx.font = '11px Noto Sans JP, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(t().still, ballX, CY - R - 8);
+    ctx.textAlign = 'left';
+  }
+
+  // ground
+  ctx.strokeStyle = borderColor; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, CY + R + 2); ctx.lineTo(wallX, CY + R + 2);
+  ctx.stroke();
+
+  ctx.fillStyle = mutedColor;
+  ctx.font = '9px JetBrains Mono, monospace';
+  ctx.fillText(t().xAxis, 4, 92);
+}
+
+function drawFtGraph() {
+  const cv = document.getElementById('ftgraph');
+  const W = cv.parentElement.clientWidth - 40;
+  cv.width = W; cv.height = 200;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, W, 200);
+
+  const surfColor  = getCSSVar('--surface2');
+  const gridColor  = getCSSVar('--grid');
+  const borderColor= getCSSVar('--border');
+  const mutedColor = getCSSVar('--muted');
+  const dpColor    = getCSSVar('--dp');
+  const FcColor    = getCSSVar('--Fc');
+  const v1Color    = getCSSVar('--v1');
+
+  ctx.fillStyle = surfColor;
+  ctx.fillRect(0, 0, W, 200);
+
+  const { F, t: Ts } = S;
+  const pad = { l:64, r:24, t:18, b:30 };
+  const gW = W - pad.l - pad.r;
+  const gH = 200 - pad.t - pad.b;
+
+  const tMax = Math.max(Ts * 2.5, 0.05);
+  const fAbsMax = Math.max(Math.abs(F) * 1.4, 10);
+
+  const zeroY = pad.t + gH / 2;
+  const tx = v => pad.l + (v / tMax) * gW;
+  const fy = v => zeroY - (v / fAbsMax) * (gH / 2);
+
+  ctx.strokeStyle = gridColor; ctx.lineWidth = 1;
+  ctx.fillStyle = mutedColor; ctx.font = '10px JetBrains Mono, monospace';
+  for (let i = -2; i <= 2; i++) {
+    const fv = fAbsMax * i / 2;
+    const y = fy(fv);
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + gW, y); ctx.stroke();
+    ctx.fillText(fmtSigned(fv, 2), 4, y + 3);
+  }
+
+  ctx.strokeStyle = borderColor; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, pad.t + gH);
+  ctx.moveTo(pad.l, zeroY); ctx.lineTo(pad.l + gW, zeroY);
+  ctx.stroke();
+
+  ctx.fillStyle = mutedColor; ctx.font = '10px JetBrains Mono, monospace';
+  ctx.fillText('F(N)', 4, pad.t + 8);
+  ctx.fillText('t(s)', pad.l + gW - 14, zeroY + 14);
+
+  const xStart = tx(0);
+  const xEnd   = tx(Ts);
+  const yZero  = zeroY;
+  const yF     = fy(F);
+
+  const fillCol = F >= 0
+    ? 'rgba(0,181,115,0.18)'   // green fill for positive
+    : 'rgba(224,123,42,0.18)'; // orange fill for negative
+  ctx.fillStyle = fillCol;
+  ctx.fillRect(xStart, Math.min(yZero, yF), xEnd - xStart, Math.abs(yF - yZero));
+
+  ctx.strokeStyle = F >= 0 ? dpColor : FcColor;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(xStart, yF); ctx.lineTo(xEnd, yF); ctx.lineTo(xEnd, yZero);
+  ctx.stroke();
+
+  // dashed alt
+  const F2 = F * 0.5, t2 = Ts * 2;
+  if (t2 <= tMax * 0.97) {
+    const yF2 = fy(F2);
+    ctx.strokeStyle = v1Color + 'bb'; ctx.lineWidth = 1.5;
+    ctx.setLineDash([4,3]);
+    ctx.beginPath();
+    ctx.moveTo(tx(0), yF2); ctx.lineTo(tx(t2), yF2); ctx.lineTo(tx(t2), zeroY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = v1Color + 'bb';
+    ctx.font = '10px Noto Sans JP, sans-serif';
+    ctx.fillText(t().ftSameArea, tx(t2) + 4, yF2 + (F2 > 0 ? -4 : 12));
+  }
+
+  ctx.fillStyle = F >= 0 ? dpColor : FcColor;
+  ctx.font = 'bold 12px JetBrains Mono, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('Ft = ' + fmtSigned(F * Ts) + ' N·s', (xStart + xEnd) / 2, (yF + zeroY) / 2 + 4);
+  ctx.textAlign = 'left';
+
+  ctx.strokeStyle = F >= 0 ? dpColor : FcColor;
+  ctx.beginPath();
+  ctx.moveTo(xEnd, zeroY - 4); ctx.lineTo(xEnd, zeroY + 4);
+  ctx.stroke();
+  ctx.fillStyle = F >= 0 ? dpColor : FcColor;
+  ctx.font = '10px JetBrains Mono, monospace';
+  ctx.fillText(fmt(Ts) + 's', xEnd - 14, zeroY + 18);
+}
+
+function applyModeUI() {
+  const mode = S.mode;
+  const autoKey = mode === 'auto-dp' ? 'dp' : mode === 'auto-v2' ? 'v2' : 'v1';
+  const L = t();
+
+  ['v1','v2','dp'].forEach(k => {
+    const isAuto = k === autoKey;
+    document.getElementById('block-' + k).classList.toggle('is-auto', isAuto);
+    const badge = document.getElementById('badge-' + k);
+    badge.textContent = isAuto ? L.badgeAuto : L.badgeInput;
+    badge.className = 'param-badge ' + (isAuto ? 'badge-auto' : 'badge-input');
+    document.getElementById('sl-' + k).disabled = isAuto;
+  });
+
+  document.querySelectorAll('.mode-tab').forEach(b =>
+    b.classList.toggle('active', b.dataset.mode === mode));
+}
+
+function setParamDisplay(prefix, val) {
+  document.getElementById('disp-'+prefix+'-num').textContent = fmtSigned(val);
+  document.getElementById('disp-'+prefix+'-dir').textContent = dirArrow(val);
+}
+
+function update(hint) {
+  resolve();
+  applyFtLink();
+  applyModeUI();
+
+  const { m, v1, v2, dp, F, t: Ts } = S;
+  const mv1 = m * v1;
+  const mv2 = m * v2;
+  const impulse = F * Ts;
+  const L = t();
+
+  // sync auto slider
+  const slMap = { 'auto-dp':['sl-dp', dp], 'auto-v2':['sl-v2', v2], 'auto-v1':['sl-v1', v1] };
+  const [slId, slVal] = slMap[S.mode];
+  const sl = document.getElementById(slId);
+  sl.value = Math.max(+sl.min, Math.min(+sl.max, slVal));
+
+  if (S.linkFt) {
+    const slF = document.getElementById('sl-F');
+    const slT = document.getElementById('sl-t');
+    const absF = Math.abs(S.F);
+    if (absF > +slF.max) { slF.max = Math.ceil(absF * 1.2); slF.min = -slF.max; }
+    if (S.t > +slT.max) slT.max = Math.min(60, S.t * 1.3);
+    if (S.t < +slT.min) slT.min = Math.max(1e-5, S.t * 0.7);
+    slF.value = Math.max(+slF.min, Math.min(+slF.max, S.F));
+    slT.value = Math.max(+slT.min, Math.min(+slT.max, S.t));
+  }
+
+  setParamDisplay('v1', v1);
+  setParamDisplay('v2', v2);
+  setParamDisplay('dp', dp);
+
+  document.getElementById('val-m').textContent = fmt(m);
+  document.getElementById('val-F').textContent = fmtSigned(F) + ' N';
+  document.getElementById('val-t').textContent = fmt(Ts) + ' s';
+
+  const refMaxV = Math.max(Math.abs(v1), Math.abs(v2), 1);
+  drawSnap('cv-before', v1, '--v1', refMaxV, m);
+  drawSnap('cv-after',  v2, '--v2', refMaxV, m);
+
+  document.getElementById('snap-mv1').textContent = fmtSigned(mv1);
+  document.getElementById('snap-mv2').textContent = fmtSigned(mv2);
+  document.getElementById('snap-dp').textContent  = fmtSigned(dp) + ' N·s';
+
+  document.getElementById('eq-Ft').textContent  = fmtSigned(impulse) + ' N·s';
+  document.getElementById('eq-mv2').textContent = fmtSigned(mv2) + ' kg·m/s';
+  document.getElementById('eq-mv1').textContent = fmtSigned(mv1) + ' kg·m/s';
+  document.getElementById('eq-dp').textContent  = fmtSigned(dp) + ' N·s';
+
+  const scale = Math.max(Math.abs(impulse), Math.abs(dp), 0.001);
+  function setBar(barId, valId, val) {
+    const bar = document.getElementById(barId);
+    const pct = Math.abs(val) / scale * 50;
+    if (val >= 0) { bar.style.left = '50%'; bar.style.width = pct + '%'; }
+    else { bar.style.left = (50 - pct) + '%'; bar.style.width = pct + '%'; }
+    document.getElementById(valId).textContent = fmtSigned(val);
+  }
+  setBar('bar-Ft', 'bar-Ft-val', impulse);
+  setBar('bar-dp', 'bar-dp-val', dp);
+
+  const diff = Math.abs(impulse - dp);
+  const chk = document.getElementById('bal-check');
+  if (S.linkFt) {
+    chk.style.color = getCSSVar('--Fc');
+    chk.textContent = L.balLinkMsg(S.lastTouchedFt, fmtSigned(dp), fmt(Ts), fmtSigned(F));
+  } else if (diff < Math.max(0.01, Math.abs(dp) * 0.01)) {
+    chk.style.color = getCSSVar('--dp');
+    chk.textContent = L.balOk;
+  } else {
+    const sameSign = (impulse * dp) >= 0 || impulse === 0 || dp === 0;
+    if (!sameSign) {
+      chk.style.color = getCSSVar('--v2');
+      chk.textContent = L.balSignWarn(fmtSigned(impulse), fmtSigned(dp));
+    } else {
+      chk.style.color = getCSSVar('--muted');
+      chk.textContent = L.balMismatch(fmtSigned(impulse), fmtSigned(dp));
+    }
+  }
+
+  const ins = document.getElementById('insight');
+  if (hint) {
+    ins.textContent = hint;
+  } else if (S.linkFt && S.lastTouchedFt === 'F') {
+    ins.textContent = L.insF(fmtSigned(F), fmtSigned(dp), fmt(Ts));
+  } else if (S.linkFt && S.lastTouchedFt === 't') {
+    ins.textContent = L.insT(fmt(Ts), fmtSigned(dp), fmtSigned(F));
+  } else if (v2 === 0 && v1 !== 0) {
+    ins.textContent = L.insStop(fmtSigned(mv2 - mv1));
+  } else if (v1 > 0 && v2 < 0) {
+    ins.textContent = L.insBounce;
+  } else if (Math.abs(v1 - v2) < 0.1) {
+    ins.textContent = L.insSame;
+  } else {
+    ins.textContent = L.insDefault(fmtSigned(impulse), fmtSigned(dp));
+  }
+
+  drawFtGraph();
+}
+
+function applyPreset(key) {
+  const p = presetData[key];
+  S.m = p.m; S.v1 = p.v1; S.v2 = p.v2;
+  S.dp = p.m * (p.v2 - p.v1);
+  S.F = p.F; S.t = p.t; S.mode = p.mode;
+
+  const slM  = document.getElementById('sl-m');
+  const slV1 = document.getElementById('sl-v1');
+  const slV2 = document.getElementById('sl-v2');
+  const slDp = document.getElementById('sl-dp');
+  const slF  = document.getElementById('sl-F');
+  const slT  = document.getElementById('sl-t');
+
+  slM.max = Math.max(5, p.m*2); slM.step = p.m<1?0.01:0.1; slM.value = p.m;
+
+  const vAbs = Math.max(20, Math.abs(p.v1)*1.5, Math.abs(p.v2)*1.5);
+  slV1.min = -vAbs; slV1.max = vAbs; slV1.step = vAbs>40?1:0.5; slV1.value = p.v1;
+  slV2.min = -vAbs; slV2.max = vAbs; slV2.step = slV1.step;    slV2.value = p.v2;
+
+  const dpAbs = Math.max(40, Math.abs(S.dp)*2);
+  slDp.min = -dpAbs; slDp.max = dpAbs; slDp.step = dpAbs>40?1:0.5; slDp.value = S.dp;
+
+  const fAbs = Math.max(500, Math.abs(p.F)*2);
+  slF.min = -fAbs; slF.max = fAbs; slF.step = fAbs>500?10:1; slF.value = p.F;
+
+  slT.min = p.t<0.01?0.001:0.01;
+  slT.max = Math.max(5, p.t*20); slT.step = p.t<0.01?0.001:0.01; slT.value = p.t;
+
+  document.querySelectorAll('.preset-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.preset === key));
+
+  update(t().presets[key].hint);
+}
+
+// Events
+document.getElementById('sl-m') .addEventListener('input', e => { S.m  = +e.target.value; update(); });
+document.getElementById('sl-v1').addEventListener('input', e => { S.v1 = +e.target.value; update(); });
+document.getElementById('sl-v2').addEventListener('input', e => { S.v2 = +e.target.value; update(); });
+document.getElementById('sl-dp').addEventListener('input', e => { S.dp = +e.target.value; update(); });
+
+document.getElementById('sl-F').addEventListener('input', e => {
+  S.F = +e.target.value; S.lastTouchedFt = 'F'; update();
+});
+document.getElementById('sl-t').addEventListener('input', e => {
+  S.t = +e.target.value; S.lastTouchedFt = 't'; update();
+});
+document.getElementById('link-ft').addEventListener('change', e => {
+  S.linkFt = e.target.checked;
+  const lbl = document.getElementById('link-toggle-lbl');
+  if (lbl) {
+    lbl.style.borderColor = S.linkFt ? 'var(--Fc)' : '';
+    lbl.style.color = S.linkFt ? 'var(--Fc)' : '';
+  }
+  update();
+});
+
+document.querySelectorAll('.mode-tab').forEach(btn =>
+  btn.addEventListener('click', () => { S.mode = btn.dataset.mode; update(); }));
+
+document.getElementById('presets').addEventListener('click', e => {
+  const btn = e.target.closest('.preset-btn');
+  if (btn) applyPreset(btn.dataset.preset);
+});
+
+window.addEventListener('resize', () => update());
+
+// Init
+const linkLbl = document.getElementById('link-toggle-lbl');
+if (linkLbl) { linkLbl.style.borderColor = 'var(--Fc)'; linkLbl.style.color = 'var(--Fc)'; }
+
+applyLang();
+applyPreset('default');
+</script>
+</body>
+</html>
